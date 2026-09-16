@@ -19,6 +19,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -34,6 +36,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define MIN_PULSE 3200UL
+#define MAX_PULSE 6400UL
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -87,8 +91,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_SPI1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+  HAL_TIM_PWM_START(&htim1, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -98,6 +105,16 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  uint8_t tx_buf[3] = {0x01, 0x80, 0x00};
+	  uint8_t rx_buf[3] = {0x01, 0x00, 0x00};
+
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	  HAL_SPI_TransmitReceive_DMA (&hspi1, tx_buf, rx_buf, 8);
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+
+	  uint16_t adcValue = ((rx_buf[1] & 0x03) << 8) | rx_buf[2];
+	  uint32_t compValue = MIN_PULSE + ((adcValue * (MAX_PULSE - MIN_PULSE)) / 1023UL);
+	  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, compValue);
   }
   /* USER CODE END 3 */
 }
